@@ -12,38 +12,37 @@ const LockerScene3D = lazy(() =>
 type Tab = 'login' | 'register'
 
 function getFriendlyError(error: any): string {
-  const msg = error.message || String(error)
-  if (msg.includes('Email not confirmed') || msg.includes('Email no confirmado')) {
-    return 'Debes confirmar tu correo electrónico. Revisa tu bandeja de entrada o Spam.'
+  const msg = (error.json?.error_description || error.json?.error || error.message || String(error)).toLowerCase()
+  if (msg.includes('email not confirmed') || msg.includes('email no confirmado')) {
+    return 'Debés confirmar tu correo electrónico. Revisá tu bandeja de entrada o Spam.'
   }
-  if (msg.includes('Invalid login credentials') || msg.includes('invalid_grant')) {
-    return 'Email o contraseña incorrectos.'
+  if (msg.includes('invalid_grant') || msg.includes('no user found') || msg.includes('password invalid') || msg.includes('invalid login')) {
+    return 'No se pudo iniciar sesión. Verificá tu email y contraseña, o confirmá tu cuenta desde el email que recibiste.'
   }
-  if (msg.includes('User already exists') || msg.includes('already registered')) {
-    return 'Este correo ya está registrado. Intenta iniciar sesión.'
+  if (msg.includes('user already exists') || msg.includes('already registered')) {
+    return 'Este correo ya está registrado. Intentá iniciar sesión.'
   }
-  if (msg.includes('FetchError') || msg.includes('Network Error') || msg.includes('Failed to fetch') || error.status === 404) {
+  if (msg.includes('fetcherror') || msg.includes('network error') || msg.includes('failed to fetch') || error.status === 404) {
     return 'Error de conexión. Si estás en desarrollo local, iniciá la app usando `npm run dev` (Netlify CLI) o usá el "Modo demo".'
   }
-  return msg
+  return error.message || String(error)
 }
 
 export default function Login() {
   const { signIn, signUp, signInDemo } = useAuthStore()
   const navigate = useNavigate()
 
-  const [tab,      setTab]      = useState<Tab>('login')
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [gymName,  setGymName]  = useState('')
-  const [showPwd,  setShowPwd]  = useState(false)
-  const [loading,  setLoading]  = useState(false)
+  const [tab,        setTab]        = useState<Tab>('login')
+  const [email,      setEmail]      = useState('')
+  const [password,   setPassword]   = useState('')
+  const [gymName,    setGymName]    = useState('')
+  const [showPwd,    setShowPwd]    = useState(false)
+  const [loading,    setLoading]    = useState(false)
+  const [registered, setRegistered] = useState(false) // true cuando signup ok pero necesita confirmar email
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     setLoading(true)
-
     try {
       if (tab === 'login') {
         const { error } = await signIn(email, password)
@@ -60,9 +59,16 @@ export default function Login() {
         if (error) {
           console.error(error)
           toastError(getFriendlyError(error))
-        } else {
-          toastSuccess('¡Cuenta creada! Revisá tu email para confirmar.')
+          return
+        }
+        // Verificar si el auto-login funcionó (sin confirmación de email)
+        const { user } = useAuthStore.getState()
+        if (user) {
+          toastSuccess('¡Cuenta creada! Bienvenido.')
           navigate('/app/dashboard')
+        } else {
+          // Necesita confirmar email antes de poder ingresar
+          setRegistered(true)
         }
       }
     } finally {
@@ -75,6 +81,36 @@ export default function Login() {
     signInDemo()
     toastSuccess('Modo demo — sin conexión a base de datos')
     navigate('/app/dashboard')
+  }
+
+  // ── Pantalla: cuenta creada, revisar email ──────────────────
+  if (registered) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--color-bg-primary)' }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="glass rounded-2xl p-8 max-w-md w-full text-center"
+          style={{ border: '1px solid rgba(59,130,246,0.3)' }}>
+          <div className="text-5xl mb-4">📧</div>
+          <h1 className="text-2xl font-bold text-white mb-2">¡Cuenta creada!</h1>
+          <p className="mb-1" style={{ color: 'var(--color-text-secondary)' }}>
+            Te enviamos un email de confirmación a:
+          </p>
+          <p className="font-semibold text-blue-400 mb-4">{email}</p>
+          <p className="text-sm mb-6" style={{ color: 'var(--color-text-muted)' }}>
+            Revisá tu bandeja de entrada (y la carpeta Spam) y hacé clic en el link para activar tu cuenta.
+            Luego podés iniciar sesión normalmente.
+          </p>
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            className="btn-primary w-full mb-3"
+            onClick={() => { setRegistered(false); setTab('login') }}>
+            Ir al inicio de sesión
+          </motion.button>
+          <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            ¿No recibiste el email? Esperá unos minutos o revisá en Spam.
+          </p>
+        </motion.div>
+      </div>
+    )
   }
 
   return (
