@@ -30,6 +30,17 @@ function parseUser(nlUser: any): { user: any; rol: UserRol | null } {
   return { user: nlUser, rol }
 }
 
+/** Determina el rol efectivo: si hay gym y rol es null, asume admin (propietario reciente) */
+function resolveRol(rol: UserRol | null, gym: any, user: any): UserRol | null {
+  if (rol) return rol
+  if (!gym) return null
+  // Si el gym existe: puede ser admin (owner) o empleado. 
+  // Si app_metadata.rol es 'empleado', respetamos eso.
+  if (user?.app_metadata?.rol === 'empleado') return 'empleado'
+  // Sin rol definido pero con gym => admin (propietario que aún no tiene JWT actualizado)
+  return 'admin'
+}
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -46,7 +57,9 @@ export const useAuthStore = create<AuthState>()(
           // Cargar el gym desde la API
           try {
             const gym = await api.get('/gyms')
-            set({ user, gym, rol, loading: false })
+            // Si el rol en el JWT no está definido aún pero hay gym, asumir admin
+            const rolEfectivo = resolveRol(rol, gym, nlUser)
+            set({ user, gym, rol: rolEfectivo, loading: false })
           } catch {
             set({ user, gym: null, rol, loading: false })
           }
@@ -82,7 +95,9 @@ export const useAuthStore = create<AuthState>()(
             }
           }
 
-          set({ user, gym, rol: gym ? (rol ?? 'admin') : rol })
+          // Resolver rol efectivo
+          const rolEfectivo = resolveRol(rol, gym, nlUser)
+          set({ user, gym, rol: rolEfectivo })
           return { error: null }
         } catch (e: any) {
           return { error: e }
