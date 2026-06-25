@@ -157,7 +157,7 @@ export default function Settings() {
   // ── Crear empleado ───────────────────────────────────────
   const handleCreateEmpleado = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!empEmail.trim() || !empPassword.trim()) return
+    if (!empEmail.trim()) return
     setCreatingEmp(true)
     try {
       const created = await api.post('/empleados', {
