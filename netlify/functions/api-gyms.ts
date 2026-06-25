@@ -5,66 +5,72 @@ import { eq } from 'drizzle-orm'
 import { getUser, requireUser, json, err, options, CORS } from './_helpers'
 
 export default async function handler(req: Request): Promise<Response> {
-  if (req.method === 'OPTIONS') return options()
+  try {
+    if (req.method === 'OPTIONS') return options()
 
-  const url  = new URL(req.url)
-  const user = requireUser(req)
+    const url  = new URL(req.url)
+    const user = requireUser(req)
 
-  // GET /api/gyms — obtener el gym del usuario actual
-  if (req.method === 'GET') {
-    const db = getDb()
-    const gymId = user.app_metadata?.gym_id
-    if (gymId) {
-      const [gym] = await db.select().from(gyms).where(eq(gyms.id, gymId))
-      if (gym) return json(gym)
-    }
-    // Fallback: buscar por ownerId
-    const [gymByOwner] = await db.select().from(gyms).where(eq(gyms.ownerId, user.sub))
-    return json(gymByOwner ?? null)
-  }
-
-  // POST /api/gyms — crear gym para nuevo admin (llamado después del primer login)
-  if (req.method === 'POST') {
-    const body = await req.json()
-    const { nombre, direccion, telefono } = body
-
-    if (!nombre?.trim()) return err('El nombre es requerido')
-
-    // Verificar si ya tiene gym
-    if (user.app_metadata?.gym_id) {
+    // GET /api/gyms — obtener el gym del usuario actual
+    if (req.method === 'GET') {
       const db = getDb()
-      const [existing] = await db.select().from(gyms).where(eq(gyms.id, user.app_metadata.gym_id))
-      return json(existing)
+      const gymId = user.app_metadata?.gym_id
+      if (gymId) {
+        const [gym] = await db.select().from(gyms).where(eq(gyms.id, gymId))
+        if (gym) return json(gym)
+      }
+      // Fallback: buscar por ownerId
+      const [gymByOwner] = await db.select().from(gyms).where(eq(gyms.ownerId, user.sub))
+      return json(gymByOwner ?? null)
     }
 
-    const db = getDb()
-    const [gym] = await db
-      .insert(gyms)
-      .values({ nombre, direccion, telefono, ownerId: user.sub })
-      .returning()
+    // POST /api/gyms — crear gym para nuevo admin (llamado después del primer login)
+    if (req.method === 'POST') {
+      const body = await req.json()
+      const { nombre, direccion, telefono } = body
 
-    // Actualizar metadata del usuario en Netlify Identity
-    await updateUserMeta(user.sub, { gym_id: gym.id, rol: 'admin' }, req)
+      if (!nombre?.trim()) return err('El nombre es requerido')
 
-    return json(gym, 201)
+      // Verificar si ya tiene gym
+      if (user.app_metadata?.gym_id) {
+        const db = getDb()
+        const [existing] = await db.select().from(gyms).where(eq(gyms.id, user.app_metadata.gym_id))
+        return json(existing)
+      }
+
+      const db = getDb()
+      const [gym] = await db
+        .insert(gyms)
+        .values({ nombre, direccion, telefono, ownerId: user.sub })
+        .returning()
+
+      // Actualizar metadata del usuario en Netlify Identity
+      await updateUserMeta(user.sub, { gym_id: gym.id, rol: 'admin' }, req)
+
+      return json(gym, 201)
+    }
+
+    // PUT /api/gyms — actualizar datos del gym
+    if (req.method === 'PUT') {
+      const gymId = user.app_metadata?.gym_id
+      if (!gymId) return err('Sin gimnasio', 403)
+
+      const body = await req.json()
+      const db = getDb()
+      const [updated] = await db
+        .update(gyms)
+        .set({ nombre: body.nombre, direccion: body.direccion, telefono: body.telefono })
+        .where(eq(gyms.id, gymId))
+        .returning()
+      return json(updated)
+    }
+
+    return err('Método no soportado', 405)
+  } catch (e: any) {
+    if (e instanceof Response) return e
+    console.error('API Error:', e)
+    return err(e.message || String(e), 500)
   }
-
-  // PUT /api/gyms — actualizar datos del gym
-  if (req.method === 'PUT') {
-    const gymId = user.app_metadata?.gym_id
-    if (!gymId) return err('Sin gimnasio', 403)
-
-    const body = await req.json()
-    const db = getDb()
-    const [updated] = await db
-      .update(gyms)
-      .set({ nombre: body.nombre, direccion: body.direccion, telefono: body.telefono })
-      .where(eq(gyms.id, gymId))
-      .returning()
-    return json(updated)
-  }
-
-  return err('Método no soportado', 405)
 }
 
 // Actualiza app_metadata del usuario en Netlify Identity vía API de admin
