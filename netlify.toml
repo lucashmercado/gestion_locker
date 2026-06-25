@@ -11,7 +11,11 @@
   node_bundler = "esbuild"
 
 
-# SPA redirect
+[[redirects]]
+  from   = "/api/empleados"
+  to     = "/.netlify/functions/api-empleados"
+  status = 200
+
 [[redirects]]
   from   = "/api/*"
   to     = "/.netlify/functions/api-:splat"
