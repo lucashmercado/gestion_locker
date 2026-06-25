@@ -50,6 +50,26 @@ export async function requireGym(user: NLUser): Promise<string> {
   throw new Response('Gym not configured', { status: 403 })
 }
 
+/** Verifica si el usuario es admin:
+ *  - Si tiene rol 'admin' en app_metadata, OK
+ *  - Si tiene rol 'empleado' en app_metadata, NO
+ *  - Si no tiene rol en metadata => verificar si es owner del gym en la DB
+ */
+export async function isAdmin(user: NLUser): Promise<boolean> {
+  // Empleado explícito
+  if (user.app_metadata?.rol === 'empleado') return false
+  // Admin explícito
+  if (user.app_metadata?.rol === 'admin') return true
+  // Sin rol en JWT: verificar ownership en la DB
+  try {
+    const db = getDb()
+    const [gym] = await db.select({ id: gyms.id }).from(gyms).where(eq(gyms.ownerId, user.sub))
+    return !!gym
+  } catch {
+    return false
+  }
+}
+
 export const CORS = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',

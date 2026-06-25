@@ -1,5 +1,5 @@
 import type { Config } from '@netlify/functions'
-import { requireUser, requireGym, json, err, options } from './_helpers'
+import { requireUser, requireGym, isAdmin, json, err, options } from './_helpers'
 
 export default async function handler(req: Request): Promise<Response> {
   try {
@@ -10,8 +10,9 @@ export default async function handler(req: Request): Promise<Response> {
     const siteUrl = process.env.URL || new URL(req.url).origin
     const serviceToken = process.env.NETLIFY_IDENTITY_TOKEN
 
-    // Solo admins pueden gestionar empleados
-    if (user.app_metadata?.rol !== 'admin') {
+    // Solo admins pueden gestionar empleados (verificado via DB ownership)
+    const adminOk = await isAdmin(user)
+    if (!adminOk) {
       return err('Solo los administradores pueden gestionar empleados', 403)
     }
 
