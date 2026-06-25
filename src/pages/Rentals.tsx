@@ -341,9 +341,7 @@ export default function Rentals() {
 
   useEffect(() => { if (gym?.id) fetchAlquileres(gym.id) }, [gym?.id])
 
-  const data = (alquileres.length > 0 ? alquileres : DEMO_ALQUILERES) as any[]
-
-  const displayed = data.filter((a: any) => {
+  const displayed = alquileres.filter((a: any) => {
     const nombre = a.cliente?.nombre || a.cliente_nombre || a.clienteNombre || ''
     const num = a.locker?.numero || a.locker_numero || a.lockerNumero || ''
     const matchSearch = nombre.toLowerCase().includes(search.toLowerCase()) || num.includes(search)
@@ -498,11 +496,29 @@ export default function Rentals() {
               </AnimatePresence>
             </tbody>
           </table>
-          {displayed.length === 0 && (
-            <div className="py-16 text-center" style={{ color: 'var(--color-text-muted)' }}>
-              No se encontraron alquileres
-            </div>
-          )}
+          {alquileres.length === 0 && !search && filtro === 'todos' ? (
+            <tr>
+              <td colSpan={8}>
+                <div className="py-16 text-center">
+                  <div className="text-4xl mb-3">📋</div>
+                  <p className="text-white font-semibold mb-1">Sin alquileres aún</p>
+                  <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>Creá tu primer alquiler asignando un locker a un cliente</p>
+                  <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                    className="btn-primary gap-2 mx-auto" onClick={() => setShowNew(true)}>
+                    <Plus size={16} /> Crear primer alquiler
+                  </motion.button>
+                </div>
+              </td>
+            </tr>
+          ) : displayed.length === 0 ? (
+            <tr>
+              <td colSpan={8}>
+                <div className="py-16 text-center" style={{ color: 'var(--color-text-muted)' }}>
+                  No se encontraron alquileres
+                </div>
+              </td>
+            </tr>
+          ) : null}
         </div>
       </div>
 
@@ -515,10 +531,4 @@ export default function Rentals() {
   )
 }
 
-const DEMO_ALQUILERES = [
-  { id:'1', lockerNumero:'01', clienteNombre:'Juan García',   telefono:'1134567890', monto:6000, fechaInicio:'2024-06-01', fechaVencimiento:'2024-07-15', monto_pagado:6000, fecha_inicio:'2024-06-01', fecha_vencimiento:'2024-07-15', tipo_alquiler:'mes',    metodo_pago:'efectivo',      estado:'activo'    },
-  { id:'2', lockerNumero:'07', clienteNombre:'María López',   telefono:'',           monto:6000, fechaInicio:'2024-05-15', fechaVencimiento:'2024-07-20', monto_pagado:6000, fecha_inicio:'2024-05-15', fecha_vencimiento:'2024-07-20', tipo_alquiler:'mes',    metodo_pago:'transferencia', estado:'activo'    },
-  { id:'3', lockerNumero:'12', clienteNombre:'Carlos Ruiz',   telefono:'1156789012', monto:8000, fechaInicio:'2024-06-10', fechaVencimiento:'2024-08-01', monto_pagado:8000, fecha_inicio:'2024-06-10', fecha_vencimiento:'2024-08-01', tipo_alquiler:'mes',    metodo_pago:'tarjeta',       estado:'activo'    },
-  { id:'4', lockerNumero:'23', clienteNombre:'Ana Torres',    telefono:'',           monto:6000, fechaInicio:'2024-05-01', fechaVencimiento:'2024-06-01', monto_pagado:6000, fecha_inicio:'2024-05-01', fecha_vencimiento:'2024-06-01', tipo_alquiler:'semana', metodo_pago:'efectivo',      estado:'vencido'   },
-  { id:'5', lockerNumero:'31', clienteNombre:'Pedro Díaz',    telefono:'',           monto:200,  fechaInicio:'2024-06-24', fechaVencimiento:'2024-06-25', monto_pagado:200,  fecha_inicio:'2024-06-24', fecha_vencimiento:'2024-06-25', tipo_alquiler:'dia',    metodo_pago:'efectivo',      estado:'finalizado'},
-]
+

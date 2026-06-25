@@ -85,9 +85,7 @@ export default function Clients() {
 
   useEffect(() => { if (gym?.id) fetchClientes(gym.id) }, [gym?.id])
 
-  const data = clientes.length > 0 ? clientes : DEMO_CLIENTES
-
-  const displayed = data.filter((c: any) => {
+  const displayed = clientes.filter((c: any) => {
     const q = search.toLowerCase()
     return (
       c.nombre?.toLowerCase().includes(q) ||
@@ -126,7 +124,7 @@ export default function Clients() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white">Clientes</h1>
-          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{displayed.length} registros</p>
+          <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{clientes.length} registros</p>
         </div>
         <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
           className="btn-primary" onClick={() => setModal({})}>
@@ -203,29 +201,31 @@ export default function Clients() {
         </AnimatePresence>
       </div>
 
-      {displayed.length === 0 && (
+      {clientes.length === 0 && !search ? (
+        <div className="py-16 text-center rounded-2xl col-span-full"
+          style={{ border: '2px dashed rgba(59,130,246,0.2)', background: 'rgba(59,130,246,0.03)' }}>
+          <div className="text-4xl mb-3">👤</div>
+          <p className="text-white font-semibold mb-1">Sin clientes aún</p>
+          <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>Agregá tu primer cliente para asignarlo a un locker</p>
+          <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+            className="btn-primary gap-2 mx-auto" onClick={() => setModal({})}>
+            <Plus size={16} /> Agregar primer cliente
+          </motion.button>
+        </div>
+      ) : displayed.length === 0 ? (
         <div className="py-16 text-center" style={{ color: 'var(--color-text-muted)' }}>
           No se encontraron clientes
         </div>
-      )}
+      ) : null}
 
       <AnimatePresence>
         {modal !== false && (
           <ClienteModal
             cliente={modal || null} onClose={() => setModal(false)}
-            onSave={handleSave} gymId={gym?.id || 'demo'}
+            onSave={handleSave} gymId={gym?.id || ''}
           />
         )}
       </AnimatePresence>
     </div>
   )
 }
-
-const DEMO_CLIENTES: Cliente[] = [
-  { id:'1', gym_id:'demo', nombre:'Juan García',   telefono:'1134567890', email:'juan@email.com',  fecha_creacion:'2024-01-15' },
-  { id:'2', gym_id:'demo', nombre:'María López',   telefono:'1145678901', email:'maria@email.com', fecha_creacion:'2024-02-10' },
-  { id:'3', gym_id:'demo', nombre:'Carlos Ruiz',   telefono:'1156789012', email:'',               fecha_creacion:'2024-02-20' },
-  { id:'4', gym_id:'demo', nombre:'Ana Torres',    telefono:'1167890123', email:'ana@email.com',   fecha_creacion:'2024-03-05' },
-  { id:'5', gym_id:'demo', nombre:'Pedro Díaz',    telefono:'',           email:'pedro@email.com', fecha_creacion:'2024-03-18' },
-  { id:'6', gym_id:'demo', nombre:'Laura Sánchez', telefono:'1189012345', email:'laura@email.com', fecha_creacion:'2024-04-01' },
-]

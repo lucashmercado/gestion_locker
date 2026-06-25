@@ -76,22 +76,18 @@ export default function Dashboard() {
     }
   }, [gym?.id])
 
-  // Compute from real data or demo
-  const demo = lockers.length === 0
-  const lkrs = demo ? DEMO_LOCKERS : lockers
-  const alqs = demo ? DEMO_ALQUILERES : alquileres
-
-  const total     = lkrs.length
-  const ocupados  = lkrs.filter((l) => l.estado === 'ocupado' || l.estado === 'vencido').length
-  const libres    = lkrs.filter((l) => l.estado === 'libre').length
-  const vencidos  = alqs.filter((a: any) => a.estado === 'vencido').length
-  const proximos  = alqs.filter((a: any) => a.estado === 'activo' && venceProximamente(a.fecha_vencimiento || a.fechaVencimiento)).length
+  // Siempre usar datos reales del store
+  const total     = lockers.length
+  const ocupados  = lockers.filter((l) => l.estado === 'ocupado' || l.estado === 'vencido').length
+  const libres    = lockers.filter((l) => l.estado === 'libre').length
+  const vencidos  = alquileres.filter((a: any) => a.estado === 'vencido').length
+  const proximos  = alquileres.filter((a: any) => a.estado === 'activo' && venceProximamente(a.fecha_vencimiento || a.fechaVencimiento)).length
   const ingresos  = metricas?.ingresos_mes_actual ??
-    alqs.filter((a: any) => a.estado === 'activo').reduce((s: number, a: any) => s + (a.monto_pagado || a.monto || 0), 0)
+    alquileres.filter((a: any) => a.estado === 'activo').reduce((s: number, a: any) => s + (a.monto_pagado || a.monto || 0), 0)
 
   // Alquileres recientes y próximos a vencer
-  const activos = alqs.filter((a: any) => a.estado === 'activo').slice(0, 8)
-  const proxVencer = alqs.filter((a: any) => a.estado === 'activo' && venceProximamente(a.fecha_vencimiento || a.fechaVencimiento)).slice(0, 5)
+  const activos    = alquileres.filter((a: any) => a.estado === 'activo').slice(0, 8)
+  const proxVencer = alquileres.filter((a: any) => a.estado === 'activo' && venceProximamente(a.fecha_vencimiento || a.fechaVencimiento)).slice(0, 5)
 
   const handleDetectarVencimientos = async () => {
     if (!gym?.id) return
@@ -242,15 +238,4 @@ export default function Dashboard() {
   )
 }
 
-// ─── Demo fallback data ───────────────────────────────────────
-const DEMO_LOCKERS = Array.from({ length: 50 }).map((_, i) => ({
-  id: `d-${i}`, estado: (['ocupado','ocupado','libre','libre','ocupado','vencido'] as const)[i % 6],
-}))
-const DEMO_ALQUILERES = [
-  { id:'1', lockerNumero:'01', clienteNombre:'Juan García',   monto:6000, fechaVencimiento:'2026-06-30', estado:'activo',    monto_pagado:6000 },
-  { id:'2', lockerNumero:'07', clienteNombre:'María López',   monto:6000, fechaVencimiento:'2026-06-28', estado:'activo',    monto_pagado:6000 },
-  { id:'3', lockerNumero:'12', clienteNombre:'Carlos Ruiz',   monto:8000, fechaVencimiento:'2026-08-01', estado:'activo',    monto_pagado:8000 },
-  { id:'4', lockerNumero:'23', clienteNombre:'Ana Torres',    monto:6000, fechaVencimiento:'2026-06-20', estado:'vencido',   monto_pagado:6000 },
-  { id:'5', lockerNumero:'31', clienteNombre:'Pedro Díaz',    monto:8000, fechaVencimiento:'2026-07-15', estado:'activo',    monto_pagado:8000 },
-  { id:'6', lockerNumero:'45', clienteNombre:'Laura Sánchez', monto:6000, fechaVencimiento:'2026-06-29', estado:'activo',    monto_pagado:6000 },
-]
+

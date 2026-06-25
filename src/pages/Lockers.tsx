@@ -396,23 +396,20 @@ export default function Lockers() {
     }
   }, [gym?.id])
 
-  // Map locker_id → alquiler activo
+  // Map locker_id → alquiler activo (solo datos reales)
   const alquilerPorLocker = useMemo(() => {
     const map: Record<string, any> = {}
-    const src = alquileres.length > 0 ? alquileres : DEMO_ALQUILERES
-    for (const a of src) {
+    for (const a of alquileres) {
       const lid = (a as any).locker_id || (a as any).lockerId
       if (lid && (a as any).estado === 'activo') map[lid] = a
     }
     return map
   }, [alquileres])
 
-  const src = lockers.length > 0 ? lockers : DEMO_LOCKERS
-
-  // Colores calculados
+  // Colores calculados — siempre datos reales
   const withColor = useMemo(() =>
-    src.map((l) => ({ locker: l, color: getColorLocker(l, alquilerPorLocker[l.id]) })),
-    [src, alquilerPorLocker]
+    lockers.map((l) => ({ locker: l, color: getColorLocker(l, alquilerPorLocker[l.id]) })),
+    [lockers, alquilerPorLocker]
   )
 
   const counts = {
@@ -556,11 +553,22 @@ export default function Lockers() {
             )}
           </div>
 
-          {displayed.length === 0 && (
-            <div className="py-16 text-center rounded-xl" style={{ color: 'var(--color-text-muted)' }}>
+          {lockers.length === 0 && !search && filtro === 'todos' ? (
+            <div className="py-16 text-center rounded-2xl col-span-full"
+              style={{ border: '2px dashed rgba(59,130,246,0.2)', background: 'rgba(59,130,246,0.03)' }}>
+              <Lock size={40} className="mx-auto mb-3" style={{ color: 'rgba(59,130,246,0.3)' }} />
+              <p className="text-white font-semibold mb-1">Sin lockers aún</p>
+              <p className="text-sm mb-4" style={{ color: 'var(--color-text-muted)' }}>Agrega tu primer locker para empezar</p>
+              <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                className="btn-primary gap-2 mx-auto" onClick={() => setModal({})}>
+                <Plus size={16} /> Agregar primer locker
+              </motion.button>
+            </div>
+          ) : displayed.length === 0 ? (
+            <div className="py-16 text-center rounded-xl col-span-full" style={{ color: 'var(--color-text-muted)' }}>
               No se encontraron lockers con ese filtro
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* PANEL DE DETALLE */}
@@ -593,27 +601,3 @@ export default function Lockers() {
     </div>
   )
 }
-
-// ─── Demo data ────────────────────────────────────────────────
-const DEMO_LOCKERS: Locker[] = Array.from({ length: 48 }).map((_, i) => ({
-  id: `demo-${i}`, gym_id: 'demo',
-  numero: String(i + 1).padStart(2, '0'),
-  estado: (['ocupado','ocupado','libre','ocupado','libre','mantenimiento','ocupado','libre'] as const)[i % 8],
-}))
-
-// Simulamos algunos próximos a vencer
-const DEMO_ALQUILERES: any[] = [
-  ...Array.from({ length: 20 }).map((_, i) => ({
-    id: `da-${i}`, locker_id: `demo-${i * 2}`, lockerId: `demo-${i * 2}`,
-    locker_numero: String(i * 2 + 1).padStart(2, '0'),
-    cliente_nombre: ['Juan García','María López','Carlos Ruiz','Ana Torres','Pedro Díaz'][i % 5],
-    cliente_telefono: '11-1234-' + String(5000 + i),
-    fecha_inicio: '2026-05-01', fechaInicio: '2026-05-01',
-    fecha_vencimiento: i < 4 ? '2026-06-28' : '2026-08-01',
-    fechaVencimiento: i < 4 ? '2026-06-28' : '2026-08-01',
-    tipo_alquiler: 'mes' as TipoAlquiler, tipo: 'mes',
-    monto_pagado: 6000, monto: 6000,
-    metodo_pago: 'efectivo' as MetodoPago, metodo: 'efectivo',
-    estado: 'activo',
-  }))
-]
