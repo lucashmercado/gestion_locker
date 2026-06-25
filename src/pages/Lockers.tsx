@@ -39,7 +39,7 @@ const COLOR_MAP: Record<ColorLocker, { bg: string; border: string; text: string;
 function LockerModal({
   locker, onClose, onSave, gymId,
 }: { locker: Partial<Locker> | null; onClose: () => void; onSave: (d: any) => Promise<void>; gymId: string }) {
-  const [form, setForm] = useState({ numero: locker?.numero || '', estado: locker?.estado || 'libre' as EstadoLocker, observaciones: locker?.observaciones || '' })
+  const [form, setForm] = useState({ numero: String(locker?.numero || ''), estado: locker?.estado || 'libre' as EstadoLocker, observaciones: locker?.observaciones || '' })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -47,7 +47,11 @@ function LockerModal({
     e.preventDefault()
     if (!form.numero.trim()) { setErr('El número es requerido'); return }
     setSaving(true)
-    try { await onSave({ ...form, gym_id: gymId }); onClose() }
+    try {
+      // numero se guarda como integer en la DB
+      await onSave({ ...form, numero: isNaN(Number(form.numero)) ? form.numero : Number(form.numero), gym_id: gymId })
+      onClose()
+    }
     catch (e: any) { setErr(e.message) }
     setSaving(false)
   }
@@ -421,7 +425,7 @@ export default function Lockers() {
   }
 
   const displayed = withColor.filter(({ locker, color }) => {
-    const matchSearch = locker.numero.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = String(locker.numero).toLowerCase().includes(search.toLowerCase())
     const matchFiltro = filtro === 'todos' || color === filtro
     return matchSearch && matchFiltro
   })
