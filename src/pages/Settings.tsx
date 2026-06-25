@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Building2, Bell, Lock, Shield, Save, Check,
-  Users, UserPlus, Trash2, Mail, Eye, EyeOff,
+  Building2, Bell, Shield, Save, Check,
+  Users, UserPlus, Trash2, Mail,
   Loader2, AlertCircle, UserCheck,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -107,9 +107,7 @@ export default function Settings() {
   const [loadingEmps,   setLoadingEmps]   = useState(true)
   const [showNewEmp,    setShowNewEmp]    = useState(false)
   const [empEmail,      setEmpEmail]      = useState('')
-  const [empPassword,   setEmpPassword]   = useState('')
   const [empNombre,     setEmpNombre]     = useState('')
-  const [showEmpPwd,    setShowEmpPwd]    = useState(false)
   const [creatingEmp,   setCreatingEmp]   = useState(false)
 
   // ── Cargar datos del gym ─────────────────────────────────
@@ -164,13 +162,12 @@ export default function Settings() {
     try {
       const created = await api.post('/empleados', {
         email: empEmail.trim(),
-        password: empPassword,
         nombre: empNombre.trim(),
       })
       setEmpleados((prev) => [...prev, created])
-      setEmpEmail(''); setEmpPassword(''); setEmpNombre('')
+      setEmpEmail(''); setEmpNombre('')
       setShowNewEmp(false)
-      toastSuccess(`Empleado ${empEmail} creado correctamente`)
+      toastSuccess(`Empleado ${empEmail} registrado. Deberá crear su cuenta en el sitio con ese email.`)
     } catch (e: any) {
       toastError(e.message || 'Error al crear empleado')
     } finally {
@@ -301,7 +298,10 @@ export default function Settings() {
               <div className="p-3 rounded-xl text-xs flex gap-2"
                 style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)', color: '#60a5fa' }}>
                 <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                <span>El empleado podrá ingresar con este email y contraseña. La cuenta se confirma automáticamente.</span>
+                <span>
+                  Registrá el email del empleado. Luego él deberá <strong>crear su cuenta</strong> en el sitio con ese mismo email.
+                  El sistema le asignará automáticamente el rol de empleado.
+                </span>
               </div>
 
               <div>
@@ -331,29 +331,6 @@ export default function Settings() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
-                  Contraseña * (mín. 6 caracteres)
-                </label>
-                <div className="relative">
-                  <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
-                  <input
-                    type={showEmpPwd ? 'text' : 'password'}
-                    className="input-field pl-9 pr-10"
-                    placeholder="••••••••"
-                    value={empPassword}
-                    onChange={(e) => setEmpPassword(e.target.value)}
-                    minLength={6}
-                    required
-                  />
-                  <button type="button" onClick={() => setShowEmpPwd(!showEmpPwd)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                    style={{ color: 'var(--color-text-muted)' }}>
-                    {showEmpPwd ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-              </div>
-
               <div className="flex gap-2">
                 <motion.button
                   type="submit"
@@ -363,13 +340,13 @@ export default function Settings() {
                   className="btn-primary flex-1 py-2.5 gap-2"
                 >
                   {creatingEmp
-                    ? <><Loader2 size={15} className="animate-spin" /> Creando…</>
-                    : <><UserPlus size={15} /> Crear empleado</>
+                    ? <><Loader2 size={15} className="animate-spin" /> Registrando…</>
+                    : <><UserPlus size={15} /> Registrar empleado</>
                   }
                 </motion.button>
                 <button
                   type="button"
-                  onClick={() => { setShowNewEmp(false); setEmpEmail(''); setEmpPassword(''); setEmpNombre('') }}
+                  onClick={() => { setShowNewEmp(false); setEmpEmail(''); setEmpNombre('') }}
                   className="px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
                   style={{ background: 'rgba(30,41,59,0.6)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
                 >
