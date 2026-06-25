@@ -74,19 +74,30 @@ export default async function handler(req: Request): Promise<Response> {
 }
 
 // Actualiza app_metadata del usuario en Netlify Identity vía API de admin
+// Usa NETLIFY_IDENTITY_TOKEN (service token disponible automáticamente en Netlify Functions)
 async function updateUserMeta(userId: string, meta: Record<string, unknown>, req: Request) {
+  // NETLIFY_IDENTITY_TOKEN es el token de servicio del sitio, disponible en Netlify Functions
+  const serviceToken = process.env.NETLIFY_IDENTITY_TOKEN
   const siteUrl = process.env.URL || new URL(req.url).origin
-  const adminToken = req.headers.get('Authorization')
+
+  if (!serviceToken) {
+    console.warn('NETLIFY_IDENTITY_TOKEN not set — skipping metadata update. User will need to re-login to get gym_id in JWT.')
+    return
+  }
 
   try {
-    await fetch(`${siteUrl}/.netlify/identity/admin/users/${userId}`, {
+    const res = await fetch(`${siteUrl}/.netlify/identity/admin/users/${userId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: adminToken || '',
+        Authorization: `Bearer ${serviceToken}`,
       },
       body: JSON.stringify({ app_metadata: meta }),
     })
+    if (!res.ok) {
+      const text = await res.text()
+      console.error(`Failed to update user meta: ${res.status} ${text}`)
+    }
   } catch (e) {
     console.error('Failed to update user meta:', e)
   }

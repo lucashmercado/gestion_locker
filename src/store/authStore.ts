@@ -65,8 +65,24 @@ export const useAuthStore = create<AuthState>()(
         try {
           const nlUser = await goTrue.login(email, password, true)
           const { user, rol } = parseUser(nlUser)
-          const gym = await api.get('/gyms').catch(() => null)
-          set({ user, gym, rol })
+
+          // Intentar cargar el gym del usuario
+          let gym = await api.get('/gyms').catch(() => null)
+
+          // Si no tiene gym aún, ver si hay un nombre pendiente del registro
+          if (!gym) {
+            const pendingGymName = localStorage.getItem('pending_gym_name')
+            if (pendingGymName) {
+              try {
+                gym = await api.post('/gyms', { nombre: pendingGymName })
+                localStorage.removeItem('pending_gym_name')
+              } catch (gymErr) {
+                console.error('Error creando gym pendiente:', gymErr)
+              }
+            }
+          }
+
+          set({ user, gym, rol: gym ? (rol ?? 'admin') : rol })
           return { error: null }
         } catch (e: any) {
           return { error: e }
@@ -76,17 +92,21 @@ export const useAuthStore = create<AuthState>()(
       signUp: async (email, password, nombreGym) => {
         try {
           // 1. Crear usuario en Netlify Identity
-          const nlUser = await goTrue.signup(email, password, { nombre: nombreGym })
-          // 2. Auto-login (si el proyecto no tiene email confirmation)
+          await goTrue.signup(email, password, { nombre: nombreGym })
+
+          // Guardar el nombre del gym para cuando el usuario confirme y haga login
+          localStorage.setItem('pending_gym_name', nombreGym)
+
+          // 2. Intentar auto-login (solo funciona si no requiere confirmación de email)
           try {
             const logged = await goTrue.login(email, password, true)
             const { user, rol } = parseUser(logged)
-            // 3. Crear gym vía API
+            // 3. Crear gym vía API inmediatamente
             const gym = await api.post('/gyms', { nombre: nombreGym })
+            localStorage.removeItem('pending_gym_name')
             set({ user, gym, rol: 'admin' })
           } catch {
-            // Email confirmation requerida — usuario creado pero no logueado aún
-            set({ user: nlUser, gym: null, rol: null })
+            // Email confirmation requerida — el gym se creará al hacer login después de confirmar
           }
           return { error: null }
         } catch (e: any) {
