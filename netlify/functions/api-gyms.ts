@@ -1,6 +1,6 @@
 import type { Config } from '@netlify/functions'
 import { getDb } from '../../db/index'
-import { gyms } from '../../db/schema'
+import { gyms, empleados } from '../../db/schema'
 import { eq } from 'drizzle-orm'
 import { getUser, requireUser, json, err, options, CORS } from './_helpers'
 
@@ -14,14 +14,31 @@ export default async function handler(req: Request): Promise<Response> {
     // GET /api/gyms — obtener el gym del usuario actual
     if (req.method === 'GET') {
       const db = getDb()
+
+      // 1. Por gym_id en JWT
       const gymId = user.app_metadata?.gym_id
       if (gymId) {
         const [gym] = await db.select().from(gyms).where(eq(gyms.id, gymId))
         if (gym) return json(gym)
       }
-      // Fallback: buscar por ownerId
+
+      // 2. Es owner
       const [gymByOwner] = await db.select().from(gyms).where(eq(gyms.ownerId, user.sub))
-      return json(gymByOwner ?? null)
+      if (gymByOwner) return json(gymByOwner)
+
+      // 3. Es empleado registrado por email
+      if (user.email) {
+        const [emp] = await db
+          .select({ gymId: empleados.gymId })
+          .from(empleados)
+          .where(eq(empleados.email, user.email.toLowerCase()))
+        if (emp) {
+          const [gym] = await db.select().from(gyms).where(eq(gyms.id, emp.gymId))
+          if (gym) return json(gym)
+        }
+      }
+
+      return json(null)
     }
 
     // POST /api/gyms — crear gym para nuevo admin (llamado después del primer login)
@@ -52,11 +69,16 @@ export default async function handler(req: Request): Promise<Response> {
 
     // PUT /api/gyms — actualizar datos del gym
     if (req.method === 'PUT') {
-      const gymId = user.app_metadata?.gym_id
+      const db = getDb()
+      // Buscar gymId: primero del JWT, luego por ownership en DB
+      let gymId = user.app_metadata?.gym_id
+      if (!gymId) {
+        const [g] = await db.select({ id: gyms.id }).from(gyms).where(eq(gyms.ownerId, user.sub))
+        gymId = g?.id
+      }
       if (!gymId) return err('Sin gimnasio', 403)
 
       const body = await req.json()
-      const db = getDb()
       const [updated] = await db
         .update(gyms)
         .set({ nombre: body.nombre, direccion: body.direccion, telefono: body.telefono })

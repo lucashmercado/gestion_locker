@@ -30,14 +30,14 @@ function parseUser(nlUser: any): { user: any; rol: UserRol | null } {
   return { user: nlUser, rol }
 }
 
-/** Determina el rol efectivo: si hay gym y rol es null, asume admin (propietario reciente) */
+/** Determina el rol efectivo basado en el email y el gym */
 function resolveRol(rol: UserRol | null, gym: any, user: any): UserRol | null {
-  if (rol) return rol
   if (!gym) return null
-  // Si el gym existe: puede ser admin (owner) o empleado. 
-  // Si app_metadata.rol es 'empleado', respetamos eso.
-  if (user?.app_metadata?.rol === 'empleado') return 'empleado'
-  // Sin rol definido pero con gym => admin (propietario que aún no tiene JWT actualizado)
+  // Si el JWT ya tiene el rol, usarlo
+  if (rol === 'empleado') return 'empleado'
+  if (rol === 'admin') return 'admin'
+  // Sin rol en JWT: el owner del gym siempre es admin por defecto
+  // (el backend ya valida via DB quién es owner y quién es empleado)
   return 'admin'
 }
 

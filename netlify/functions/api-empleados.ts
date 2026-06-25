@@ -1,119 +1,83 @@
 import type { Config } from '@netlify/functions'
 import { requireUser, requireGym, isAdmin, json, err, options } from './_helpers'
+import { getDb } from '../../db/index'
+import { empleados } from '../../db/schema'
+import { eq, and } from 'drizzle-orm'
 
 export default async function handler(req: Request): Promise<Response> {
   try {
     if (req.method === 'OPTIONS') return options()
 
-    const user   = requireUser(req)
-    const gymId  = await requireGym(user)
-    const siteUrl = process.env.URL || new URL(req.url).origin
-    const serviceToken = process.env.NETLIFY_IDENTITY_TOKEN
+    const user  = requireUser(req)
+    const gymId = await requireGym(user)
 
-    // Solo admins pueden gestionar empleados (verificado via DB ownership)
+    // Solo admins pueden gestionar empleados
     const adminOk = await isAdmin(user)
     if (!adminOk) {
       return err('Solo los administradores pueden gestionar empleados', 403)
     }
 
-    if (!serviceToken) {
-      return err('Configuración de servidor incompleta (NETLIFY_IDENTITY_TOKEN)', 500)
-    }
+    const db = getDb()
 
-    // GET /api/empleados — listar todos los usuarios del gym con rol empleado
+    // ── GET: listar empleados del gym ──────────────────────────
     if (req.method === 'GET') {
-      const res = await fetch(`${siteUrl}/.netlify/identity/admin/users`, {
-        headers: { Authorization: `Bearer ${serviceToken}` },
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        console.error('Identity list users error:', res.status, text)
-        return err('Error al listar usuarios', 500)
-      }
-      const data = await res.json()
-      // Filtrar usuarios que pertenecen a este gym
-      const empleados = (data.users || [])
-        .filter((u: any) =>
-          u.app_metadata?.gym_id === gymId &&
-          u.app_metadata?.rol === 'empleado'
-        )
-        .map((u: any) => ({
-          id:     u.id,
-          email:  u.email,
-          nombre: u.user_metadata?.nombre || '',
-          rol:    'empleado',
-          creado: u.created_at,
-        }))
-      return json(empleados)
+      const lista = await db
+        .select()
+        .from(empleados)
+        .where(eq(empleados.gymId, gymId))
+
+      return json(lista.map((e) => ({
+        id:     e.id,
+        email:  e.email,
+        nombre: e.nombre || e.email,
+        rol:    'empleado',
+        creado: e.fechaCreacion,
+      })))
     }
 
-    // POST /api/empleados — crear cuenta de empleado
+    // ── POST: registrar nuevo empleado ─────────────────────────
     if (req.method === 'POST') {
       const body = await req.json()
-      const { email, password, nombre } = body
+      const { email, nombre } = body
 
       if (!email?.trim()) return err('El email es requerido')
-      if (!password || password.length < 6) return err('La contraseña debe tener al menos 6 caracteres')
 
-      // Crear usuario en Netlify Identity vía admin API
-      const res = await fetch(`${siteUrl}/.netlify/identity/admin/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          Authorization:   `Bearer ${serviceToken}`,
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          user_metadata:  { nombre: nombre || '' },
-          app_metadata:   { rol: 'empleado', gym_id: gymId },
-          confirm:        true, // Confirmar automáticamente sin email
-        }),
-      })
+      // Verificar que no exista ya en este gym
+      const [existing] = await db
+        .select({ id: empleados.id })
+        .from(empleados)
+        .where(and(eq(empleados.gymId, gymId), eq(empleados.email, email.trim().toLowerCase())))
 
-      if (!res.ok) {
-        const text = await res.text()
-        console.error('Identity create user error:', res.status, text)
-        if (res.status === 422 || text.includes('already registered') || text.includes('already exists')) {
-          return err('Ya existe un usuario con ese email', 422)
-        }
-        return err('Error al crear el empleado', 500)
-      }
+      if (existing) return err('Ya existe un empleado con ese email en tu gimnasio', 422)
 
-      const newUser = await res.json()
+      const [nuevo] = await db
+        .insert(empleados)
+        .values({
+          gymId,
+          email: email.trim().toLowerCase(),
+          nombre: nombre?.trim() || null,
+        })
+        .returning()
+
       return json({
-        id:     newUser.id,
-        email:  newUser.email,
-        nombre: nombre || '',
+        id:     nuevo.id,
+        email:  nuevo.email,
+        nombre: nuevo.nombre || nuevo.email,
         rol:    'empleado',
-        creado: newUser.created_at,
+        creado: nuevo.fechaCreacion,
       }, 201)
     }
 
-    // DELETE /api/empleados?id=xxx — eliminar empleado
+    // ── DELETE: eliminar empleado ──────────────────────────────
     if (req.method === 'DELETE') {
-      const url = new URL(req.url)
-      const userId = url.searchParams.get('id')
-      if (!userId) return err('Falta id del empleado')
+      const url      = new URL(req.url)
+      const empId    = url.searchParams.get('id')
+      if (!empId) return err('Falta id del empleado')
 
-      // Verificar que el usuario a eliminar pertenece a este gym
-      const checkRes = await fetch(`${siteUrl}/.netlify/identity/admin/users/${userId}`, {
-        headers: { Authorization: `Bearer ${serviceToken}` },
-      })
-      if (checkRes.ok) {
-        const u = await checkRes.json()
-        if (u.app_metadata?.gym_id !== gymId) {
-          return err('No tenés permiso para eliminar este empleado', 403)
-        }
-      }
+      await db
+        .delete(empleados)
+        .where(and(eq(empleados.id, empId), eq(empleados.gymId, gymId)))
 
-      const res = await fetch(`${siteUrl}/.netlify/identity/admin/users/${userId}`, {
-        method:  'DELETE',
-        headers: { Authorization: `Bearer ${serviceToken}` },
-      })
-      if (!res.ok && res.status !== 404) {
-        return err('Error al eliminar el empleado', 500)
-      }
       return json({ ok: true })
     }
 

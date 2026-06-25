@@ -32,8 +32,8 @@ export function requireUser(req: Request): NLUser {
 }
 
 import { getDb } from '../../db/index'
-import { gyms } from '../../db/schema'
-import { eq } from 'drizzle-orm'
+import { gyms, empleados } from '../../db/schema'
+import { eq, and } from 'drizzle-orm'
 
 export async function requireGym(user: NLUser): Promise<string> {
   const gymId = user.app_metadata?.gym_id
@@ -41,8 +41,19 @@ export async function requireGym(user: NLUser): Promise<string> {
 
   try {
     const db = getDb()
+
+    // Es owner del gym?
     const [gym] = await db.select({ id: gyms.id }).from(gyms).where(eq(gyms.ownerId, user.sub))
     if (gym) return gym.id
+
+    // Es empleado registrado por email?
+    if (user.email) {
+      const [emp] = await db
+        .select({ gymId: empleados.gymId })
+        .from(empleados)
+        .where(eq(empleados.email, user.email.toLowerCase()))
+      if (emp) return emp.gymId
+    }
   } catch (e) {
     console.error('Failed to resolve gym from DB:', e)
   }
@@ -50,17 +61,20 @@ export async function requireGym(user: NLUser): Promise<string> {
   throw new Response('Gym not configured', { status: 403 })
 }
 
-/** Verifica si el usuario es admin:
- *  - Si tiene rol 'admin' en app_metadata, OK
- *  - Si tiene rol 'empleado' en app_metadata, NO
- *  - Si no tiene rol en metadata => verificar si es owner del gym en la DB
- */
+/** Verifica si el usuario es admin comprobando ownership en la DB */
 export async function isAdmin(user: NLUser): Promise<boolean> {
-  // Empleado explícito
-  if (user.app_metadata?.rol === 'empleado') return false
-  // Admin explícito
-  if (user.app_metadata?.rol === 'admin') return true
-  // Sin rol en JWT: verificar ownership en la DB
+  // Si está explícitamente marcado como empleado en la DB, no es admin
+  if (user.email) {
+    try {
+      const db = getDb()
+      const [emp] = await db
+        .select({ id: empleados.id })
+        .from(empleados)
+        .where(eq(empleados.email, user.email.toLowerCase()))
+      if (emp) return false // es empleado
+    } catch { /* ignorar */ }
+  }
+  // Es owner del gym?
   try {
     const db = getDb()
     const [gym] = await db.select({ id: gyms.id }).from(gyms).where(eq(gyms.ownerId, user.sub))
