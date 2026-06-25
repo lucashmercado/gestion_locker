@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- SEO primario -->
+    <title>Locker Manager — Sistema de gestión de casilleros para gimnasios</title>
+    <meta name="description" content="Administrá alquileres de casilleros de tu gimnasio con facilidad. Control de vencimientos, pagos, clientes y reportes en tiempo real." />
+    <meta name="keywords" content="lockers, casilleros, gimnasio, alquiler, gestión, admin" />
+    <meta name="author" content="Locker Manager" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://lockerapp.netlify.app/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:title"       content="Locker Manager — Gestión de casilleros" />
+    <meta property="og:description" content="Sistema profesional para administrar alquileres de lockers en gimnasios." />
+    <meta property="og:url"         content="https://lockerapp.netlify.app/" />
+    <meta property="og:locale"      content="es_AR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="Locker Manager" />
+    <meta name="twitter:description" content="Sistema profesional de gestión de lockers para gimnasios." />
+
+    <!-- PWA / App -->
+    <meta name="theme-color"        content="#080c14" />
+    <meta name="application-name"   content="Locker Manager" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Locker Manager" />
+
+    <!-- Favicon inline SVG -->
+    <link rel="icon" type="image/svg+xml" href="/locker-icon.svg" />
+
+    <!-- Fonts (preload para rendimiento) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800&display=swap" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800&display=swap"
+      rel="stylesheet" />
+
+    <!-- JSON-LD structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Locker Manager",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "description": "Sistema de gestión de alquiler de casilleros para gimnasios",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "ARS" }
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
